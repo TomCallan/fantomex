@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Projects</h2>
+
+<section class="card">
+    <h3>New project</h3>
+    <form class="inline-form" action="/projects" method="post">
+        <input type="text" name="name" placeholder="Project name" required>
+        <input type="text" name="description" placeholder="Description (optional)">
+        <button type="submit">Create</button>
+    </form>
+</section>
+
+<section>
+    {% if projects %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Runs</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for project in projects %}
+            <tr>
+                <td><a href="/projects/{{ project.id }}/runs">{{ project.name }}</a></td>
+                <td>{{ project.description or '' }}</td>
+                <td>{{ project.runs | length }}</td>
+                <td>{{ project.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No projects yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

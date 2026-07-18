@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ run.name or run.id[:8] }} - Fantomex{% endblock %}
+
+{% block content %}
+<h2>
+    <a href="/">Projects</a> /
+    <a href="/projects/{{ run.project_id }}/runs">{{ run.project.name }}</a> /
+    {{ run.name or run.id[:8] }}
+</h2>
+
+<div class="toolbar">
+    <span class="status {{ run.status }}"></span>{{ run.status }}
+    <span style="color: var(--muted);">
+        {{ run.start_time.strftime('%Y-%m-%d %H:%M:%S') }}
+        {% if run.end_time %} → {{ run.end_time.strftime('%Y-%m-%d %H:%M:%S') }}{% endif %}
+    </span>
+    <a href="/runs/compare?ids={{ run.id }}" class="button">Compare</a>
+</div>
+
+<section class="card">
+    <h3>Parameters</h3>
+    {% if run.params %}
+    <table class="params-table">
+        <tbody>
+            {% for k, v in run.params.items() %}
+            <tr>
+                <td>{{ k }}</td>
+                <td>{{ v }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No parameters.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>Scalar Metrics</h3>
+    {% if scalar_metrics %}
+    <table class="params-table">
+        <tbody>
+            {% for k, v in scalar_metrics.items() %}
+            <tr>
+                <td>{{ k }}</td>
+                <td>{{ v }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No scalar metrics.</p>
+    {% endif %}
+</section>
+
+{% for key, metrics in time_series.items() %}
+<section class="card">
+    <h3>{{ key }}</h3>
+    <div class="chart-container">
+        <canvas id="chart-{{ loop.index }}"></canvas>
+    </div>
+</section>
+{% endfor %}
+
+<section class="card">
+    <h3>Artifacts</h3>
+    {% if artifacts %}
+    <ul>
+        {% for a in artifacts %}
+        <li>
+            <span class="badge">{{ a.type }}</span>
+            <a href="/api/runs/{{ run.id }}/artifacts">{{ a.name }}</a>
+            {% if a.size_bytes %}({{ a.size_bytes }} bytes){% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No artifacts.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>Notes</h3>
+    {% if notes %}
+    {% for n in notes %}
+    <div class="note">
+        <time>{{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</time>
+        <p>{{ n.content }}</p>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty">No notes.</p>
+    {% endif %}
+</section>
+
+<script>
+{% for key, metrics in time_series.items() %}
+const ctx{{ loop.index }} = document.getElementById('chart-{{ loop.index }}').getContext('2d');
+new Chart(ctx{{ loop.index }}, {
+    type: 'line',
+    data: {
+        labels: {{ metrics | map(attribute='step') | list | tojson }},
+        datasets: [{
+            label: '{{ key }}',
+            data: {{ metrics | map(attribute='value') | list | tojson }},
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            fill: true,
+            tension: 0.2,
+            pointRadius: 3,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: true }
+        },
+        scales: {
+            x: { title: { display: true, text: 'step' } },
+            y: { title: { display: true, text: 'value' } }
+        }
+    }
+});
+{% endfor %}
+</script>
+{% endblock %}

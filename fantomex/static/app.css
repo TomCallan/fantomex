@@ -1,0 +1,212 @@
+:root {
+    --bg: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --success: #16a34a;
+    --warning: #ca8a04;
+    --danger: #dc2626;
+    --gray: #9ca3af;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+header {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+header nav a {
+    margin-left: 16px;
+    color: var(--muted);
+}
+
+header nav a:hover {
+    color: var(--text);
+}
+
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+h2 {
+    margin: 0 0 16px 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+h3 {
+    margin: 24px 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+section {
+    margin-bottom: 32px;
+}
+
+.toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.toolbar form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+input, select, button {
+    font: inherit;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+}
+
+button, .button {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    cursor: pointer;
+}
+
+button:hover, .button:hover {
+    background: #1d4ed8;
+    text-decoration: none;
+}
+
+button.secondary {
+    background: white;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+button.secondary:hover {
+    background: #f9fafb;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    font-weight: 600;
+    color: var(--muted);
+    border-bottom-width: 2px;
+}
+
+tbody tr:hover {
+    background: #f9fafb;
+}
+
+.status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.status.running { background: var(--warning); }
+.status.completed { background: var(--success); }
+.status.failed { background: var(--danger); }
+.status.aborted { background: var(--gray); }
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    background: var(--accent-light);
+    color: var(--accent);
+    margin-right: 4px;
+}
+
+.card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.card h3 {
+    margin-top: 0;
+}
+
+.empty {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.params-table td:first-child {
+    width: 200px;
+    color: var(--muted);
+}
+
+.chart-container {
+    height: 300px;
+    margin: 16px 0;
+}
+
+.note {
+    border-left: 3px solid var(--accent);
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: var(--accent-light);
+}
+
+.note time {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.inline-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}

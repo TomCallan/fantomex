@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+fantomex.egg-info/PKG-INFO
+fantomex.egg-info/SOURCES.txt
+fantomex.egg-info/dependency_links.txt
+fantomex.egg-info/requires.txt
+fantomex.egg-info/top_level.txt

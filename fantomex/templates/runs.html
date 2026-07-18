@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - Fantomex{% endblock %}
+
+{% block content %}
+<h2><a href="/">Projects</a> / {{ project.name }}</h2>
+
+<section class="toolbar">
+    <form method="get" action="/projects/{{ project.id }}/runs">
+        <select name="status">
+            <option value="">All statuses</option>
+            <option value="running" {% if status == 'running' %}selected{% endif %}>Running</option>
+            <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="failed" {% if status == 'failed' %}selected{% endif %}>Failed</option>
+            <option value="aborted" {% if status == 'aborted' %}selected{% endif %}>Aborted</option>
+        </select>
+        <select name="tag">
+            <option value="">All tags</option>
+            {% for t in tags %}
+            <option value="{{ t }}" {% if tag == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+        <select name="sort">
+            <option value="created_at" {% if sort == 'created_at' %}selected{% endif %}>Created</option>
+            <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
+            <option value="status" {% if sort == 'status' %}selected{% endif %}>Status</option>
+        </select>
+        <button type="submit" class="secondary">Filter</button>
+    </form>
+</section>
+
+<section>
+    {% if runs %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Params</th>
+                <th>Metrics</th>
+                <th>Tags</th>
+                <th>Started</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for run in runs %}
+            <tr>
+                <td><a href="/runs/{{ run.id }}">{{ run.name or run.id[:8] }}</a></td>
+                <td><span class="status {{ run.status }}"></span>{{ run.status }}</td>
+                <td>
+                    {% for k, v in (run.params or {}).items() %}
+                    <span class="badge">{{ k }}={{ v }}</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    {% for k, v in preview_metrics.get(run.id, {}).items() %}
+                    <span class="badge">{{ k }}={{ v | round(4) }}</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    {% for t in run.tags or [] %}
+                    <span class="badge">{{ t }}</span>
+                    {% endfor %}
+                </td>
+                <td>{{ run.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if run.end_time %}
+                        {{ (run.end_time - run.start_time).total_seconds() // 60 }}m
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No runs match the filters.</p>
+    {% endif %}
+</section>
+{% endblock %}

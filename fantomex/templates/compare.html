@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Compare - Fantomex{% endblock %}
+
+{% block content %}
+<h2>Compare runs</h2>
+
+<section class="card">
+    <h3>Parameters</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Param</th>
+                {% for run in runs %}
+                <th>{{ run.name or run.id[:8] }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for key in param_keys %}
+            <tr>
+                <td>{{ key }}</td>
+                {% for run in runs %}
+                <td>{{ (run.params or {}).get(key, '—') }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card">
+    <h3>Metrics</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Metric</th>
+                {% for run in runs %}
+                <th>{{ run.name or run.id[:8] }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for key in metric_keys %}
+            <tr>
+                <td>{{ key }}</td>
+                {% for run in runs %}
+                <td>{{ run_metrics.get(run.id, {}).get(key, '—') }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card">
+    <h3>Artifacts</h3>
+    {% for run in runs %}
+    <h4>{{ run.name or run.id[:8] }}</h4>
+    {% if run.artifacts %}
+    <ul>
+        {% for a in run.artifacts %}
+        <li><span class="badge">{{ a.type }}</span> {{ a.name }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No artifacts.</p>
+    {% endif %}
+    {% endfor %}
+</section>
+{% endblock %}
