@@ -1,436 +1,217 @@
 # Fantomex
 
-Fantomex is a minimal, self-hosted experiment and run tracking platform with an AI-first workflow via MCP. It provides a lightweight FastAPI backend, a simple web UI, and a local-first development setup backed by SQLite and Alembic migrations.
+Minimal experiment/run tracking with:
+- FastAPI HTTP API
+- SQLite + Alembic migrations
+- MCP server tools for agent workflows
+- Lightweight in-repo Python client
 
-## Features
+## Quickstart (first-time users)
 
-- **Project management**: create, update, list, and delete projects
-- **Run tracking**: start runs, update status, and browse run history
-- **Metrics logging**: record scalar metrics and metric batches for a run
-- **Artifacts**: attach files or external artifact URIs to runs
-- **Notes**: add notes to runs for review and collaboration
-- **Comparison and summaries**: compare runs and summarize metrics across a project
-- **Web UI**: browse projects and runs in a browser-based dashboard
-- **MCP server**: interact with Fantomex through Model Context Protocol tools
-- **Local-first dev experience**: SQLite by default, with Alembic migrations for schema changes
-
-## Tech stack
+### Prerequisites
 
 - Python 3.11+
-- FastAPI
-- SQLAlchemy
-- Alembic
-- Pydantic v2
-- MCP
-- Uvicorn
-- Jinja2
+- `pip`
+- Optional: `uv` (commands below include non-`uv` alternatives)
 
-## Quick start
-
-### 1) Create a virtual environment and install dependencies
+### 1) Install dependencies
 
 ```bash
-uv venv
-uv pip install -e ".[dev]"
+cd /home/runner/work/fantomex/fantomex
+pip install fastapi uvicorn sqlalchemy alembic pydantic pydantic-settings mcp httpx jinja2 python-multipart
 ```
 
-### 2) Run database migrations
+### 2) Configure environment (optional)
+
+Fantomex reads these environment variables:
+
+- `DATABASE_URL` (default: `sqlite:///./fantomex.db`)
+- `ARTIFACT_ROOT` (default: `./artifacts`)
+- `HOST` (default: `127.0.0.1`)
+- `PORT` (default: `8000`)
+- `LOG_LEVEL` (default: `info`)
+
+Example:
 
 ```bash
-uv run alembic upgrade head
+export DATABASE_URL='sqlite:///./fantomex.db'
+export ARTIFACT_ROOT='./artifacts'
+export HOST='127.0.0.1'
+export PORT='8000'
+export LOG_LEVEL='info'
 ```
 
-### 3) Start the app
+### 3) Run migrations
 
 ```bash
-uv run python -m fantomex.server
+python -m alembic upgrade head
 ```
 
-Or use the dev helper script:
+### 4) Start the API server
 
 ```bash
-./start_dev.sh
+python -m fantomex.server
 ```
 
-## Configuration
+Health check:
 
-Fantomex is designed to work out of the box with a local SQLite database. Database settings and artifact storage are handled through the app configuration.
+```bash
+curl http://127.0.0.1:8000/health
+```
 
-Typical defaults include:
+## Architecture at a glance
 
-- **Database**: SQLite at `./fantomex.db`
-- **Artifacts**: stored on disk under a configured artifact root
+- `fantomex/api.py` — FastAPI app and router wiring
+- `fantomex/routers/` — API endpoints (projects, runs, metrics, artifacts, notes, comparison)
+- `fantomex/mcp.py` — MCP server tools exposed over stdio
+- `fantomex/client.py` — lightweight REST client + result piping helpers
+- `alembic/` — schema migrations
+- `scripts/create_example_files.py` — local sample data generator
 
-If you change configuration values, make sure the database URL and artifact path point to writable locations.
+## MCP server usage
 
-## API overview
+### What it is
 
-### Projects
+`fantomex/mcp.py` exposes Fantomex operations as MCP tools (create project, start run, log metrics/artifacts, summarize runs, etc.).
 
-- `POST /api/projects`
-- `GET /api/projects`
-- `GET /api/projects/{project_id}`
-- `PATCH /api/projects/{project_id}`
-- `DELETE /api/projects/{project_id}`
+### Start MCP server
 
-### Runs
+```bash
+cd /home/runner/work/fantomex/fantomex
+python -m fantomex.mcp
+```
 
-- `POST /api/projects/{project_id}/runs`
-- `GET /api/projects/{project_id}/runs`
-- `GET /api/runs/{run_id}`
-- `PATCH /api/runs/{run_id}`
-- `DELETE /api/runs/{run_id}`
+The server uses stdio transport, so it should be launched by an MCP host (IDE plugin, MCP inspector, or agent runtime).
 
-### Metrics
+### End-to-end MCP example (with MCP Inspector)
 
-- `POST /api/runs/{run_id}/metrics`
-- `GET /api/runs/{run_id}/metrics`
+In one shell, start API server:
 
-### Artifacts
+```bash
+cd /home/runner/work/fantomex/fantomex
+python -m alembic upgrade head
+python -m fantomex.server
+```
 
-- `POST /api/runs/{run_id}/artifacts`
-- `POST /api/runs/{run_id}/artifacts/upload`
-- `GET /api/runs/{run_id}/artifacts`
+In another shell, start inspector against Fantomex MCP server:
 
-### Notes
+```bash
+npx @modelcontextprotocol/inspector python -m fantomex.mcp
+```
 
-- `POST /api/runs/{run_id}/notes`
-- `GET /api/runs/{run_id}/notes`
+Then call tools in this order from the inspector UI:
 
-### Comparison and summaries
-
-- `POST /api/runs/compare`
-- `GET /api/runs/summarize`
-
-### Health check
-
-- `GET /health`
-
-## MCP usage guide
-
-Fantomex includes an MCP server for agentic workflows. The MCP interface is useful when another tool or assistant wants to manage experiments without talking to the HTTP API directly.
-
-### Available tools
-
-- `create_project`
-- `start_run`
-- `log_metric`
-- `log_artifact`
-- `list_runs`
-- `get_run`
-- `add_note`
-- `update_run`
-- `get_metrics`
-- `compare_runs`
-- `summarize_runs`
-
-### When to use MCP
-
-Use MCP when you want to:
-
-- create a project and immediately start tracking runs
-- record metrics from an AI workflow or evaluation loop
-- attach generated artifacts or model outputs
-- retrieve a full run record for analysis
-- compare several runs side by side
-- summarize project-level activity programmatically
-
-### Example MCP workflow
-
-1. **Create a project** with `create_project`
-2. **Start a run** with `start_run`
-3. **Log metrics** during execution with `log_metric`
-4. **Upload or register artifacts** with `log_artifact`
-5. **Add notes** with `add_note`
-6. **Update the run** to `completed` or `failed`
-7. **Compare runs** or **summarize** a project when the experiment finishes
-
-### Example tool inputs
-
-#### Create a project
-
+1. `create_project`
 ```json
-{
-  "name": "baseline-evals",
-  "description": "Baseline evaluation set",
-  "tags": ["evals", "baseline"],
-  "meta": {"owner": "research"}
-}
+{"name":"demo-mcp-project","tags":["demo"]}
 ```
-
-#### Start a run
-
+2. `start_run`
 ```json
-{
-  "project_id": "proj_123",
-  "name": "run-001",
-  "params": {"model": "gpt-4.1", "temperature": 0.2},
-  "tags": ["candidate-a"],
-  "meta": {"dataset": "v1"}
-}
+{"project_id":"<project_id_from_step_1>","name":"demo-run"}
 ```
-
-#### Log a metric
-
+3. `log_metric`
 ```json
-{
-  "run_id": "run_123",
-  "key": "accuracy",
-  "value": 0.92,
-  "step": null
-}
+{"run_id":"<run_id_from_step_2>","key":"accuracy","value":0.93,"step":1}
 ```
-
-#### Add a note
-
+4. `update_run`
 ```json
-{
-  "run_id": "run_123",
-  "content": "Promising result, but latency needs review."
-}
+{"run_id":"<run_id_from_step_2>","status":"completed"}
 ```
 
-### Example MCP responses
+### MCP troubleshooting
 
-Tools return JSON text content. For example, `create_project` returns a project object, `start_run` returns a run object, and `log_metric` returns a metric object.
+- **`Run not found` / `Project not found`**: verify IDs from previous tool outputs.
+- **No data persisted**: check `DATABASE_URL` and make sure migrations ran.
+- **MCP host cannot connect**: ensure host is launching `python -m fantomex.mcp` and not expecting HTTP transport.
+- **SQLite permission errors**: point `DATABASE_URL`/`ARTIFACT_ROOT` to writable paths.
 
-Example response shape:
+## Python REST client usage
 
-```json
-{
-  "id": "run_123",
-  "project_id": "proj_123",
-  "status": "running"
-}
+Use the in-repo client directly after clone.
+
+```python
+from fantomex.client import FantomexClient
+
+with FantomexClient(base_url="http://127.0.0.1:8000") as client:
+    project = client.create_project(name="quickstart-project")
+    run = client.start_run(project_id=project["id"], name="run-001")
+    client.log_metric(run_id=run["id"], key="accuracy", value=0.91, step=1)
+    client.update_run(run_id=run["id"], status="completed")
 ```
 
-## HTTP API examples
+### Result piping (decorator-enabled pattern)
 
-### Create a project
+Client methods support `pipe=True` and return `ResultPipeline`:
 
-Request:
+```python
+from fantomex.client import FantomexClient
+
+with FantomexClient() as client:
+    run_id = (
+        client.create_project(name="pipe-demo", pipe=True)
+        .pipe(lambda project: client.start_run(project_id=project["id"], name="pipe-run"))
+        .pipe(lambda run: run["id"])
+        .unwrap()
+    )
+
+    print(run_id)
+```
+
+### Error handling
+
+Errors raise `FantomexClientError` with `status_code` and normalized `detail` payload.
+
+## Generate example files for local testing
+
+Script: `/home/runner/work/fantomex/fantomex/scripts/create_example_files.py`
+
+Create defaults in `./example_data`:
 
 ```bash
-curl -X POST http://localhost:8000/api/projects \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "baseline-evals",
-    "description": "Baseline evaluation set",
-    "tags": ["evals", "baseline"],
-    "meta": {"owner": "research"}
-  }'
+cd /home/runner/work/fantomex/fantomex
+python scripts/create_example_files.py
 ```
 
-Response:
-
-```json
-{
-  "id": "proj_123",
-  "name": "baseline-evals",
-  "description": "Baseline evaluation set",
-  "tags": ["evals", "baseline"],
-  "meta": {"owner": "research"},
-  "created_at": "2026-07-18T20:00:00Z"
-}
-```
-
-### Start a run
-
-Request:
+Custom location:
 
 ```bash
-curl -X POST http://localhost:8000/api/projects/proj_123/runs \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "run-001",
-    "params": {"model": "gpt-4.1", "temperature": 0.2},
-    "tags": ["candidate-a"],
-    "meta": {"dataset": "v1"}
-  }'
+python scripts/create_example_files.py --output-dir ./tmp/example_data
 ```
 
-Response:
-
-```json
-{
-  "id": "run_123",
-  "project_id": "proj_123",
-  "name": "run-001",
-  "status": "running",
-  "params": {"model": "gpt-4.1", "temperature": 0.2},
-  "tags": ["candidate-a"],
-  "meta": {"dataset": "v1"}
-}
-```
-
-### Log metrics
-
-Request:
+Overwrite existing files:
 
 ```bash
-curl -X POST http://localhost:8000/api/runs/run_123/metrics \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "metrics": [
-      {"key": "accuracy", "value": 0.92, "step": null},
-      {"key": "loss", "value": 0.18, "step": 1}
-    ]
-  }'
+python scripts/create_example_files.py --output-dir ./tmp/example_data --overwrite
 ```
 
-Response:
+Generated files are representative run/project/metric/note/artifact payloads for local demos.
 
-```json
-[
-  {
-    "id": "metric_1",
-    "run_id": "run_123",
-    "key": "accuracy",
-    "value": 0.92,
-    "step": null,
-    "timestamp": "2026-07-18T20:01:00Z"
-  },
-  {
-    "id": "metric_2",
-    "run_id": "run_123",
-    "key": "loss",
-    "value": 0.18,
-    "step": 1,
-    "timestamp": "2026-07-18T20:01:00Z"
-  }
-]
-```
+## Hosting options (practical guidance)
 
-### Update a run
+| Option | Best for | Pros | Tradeoffs |
+|---|---|---|---|
+| Local VM / bare metal | Small internal teams | Lowest cost, full control, easy SQLite start | You own backups, patching, uptime |
+| Docker on self-hosted server | Small/medium teams | Reproducible deploys, simple rollback | Still self-managed ops |
+| Render | Small/medium managed deployments | Easy deploy from repo, managed runtime | Cost grows with sustained usage |
+| Railway | Fast prototypes + small teams | Quick setup, simple DX | Fewer deep infra controls |
+| Fly.io | Medium deployments needing regional placement | Flexible regions, container-native | More tuning/ops knowledge needed |
 
-Request:
+### Recommendation
+
+- **Small deployment (single team):** start with Docker + one managed provider (Render or Railway).
+- **Medium deployment:** use Fly.io or Docker on a managed VM, move DB to managed Postgres, keep artifacts on object storage.
+
+## Development and tests
+
+Run tests:
 
 ```bash
-curl -X PATCH http://localhost:8000/api/runs/run_123 \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "status": "completed"
-  }'
+cd /home/runner/work/fantomex/fantomex
+PYTHONPATH=/home/runner/work/fantomex/fantomex python -m pytest
 ```
 
-Response:
-
-```json
-{
-  "id": "run_123",
-  "status": "completed",
-  "end_time": "2026-07-18T20:10:00Z"
-}
-```
-
-### Compare runs
-
-Request:
+Run lint (if `ruff` installed):
 
 ```bash
-curl -X POST http://localhost:8000/api/runs/compare \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "run_ids": ["run_123", "run_456"]
-  }'
+python -m ruff check fantomex tests scripts
 ```
-
-Response:
-
-```json
-{
-  "runs": [
-    {
-      "run": {
-        "id": "run_123",
-        "status": "completed"
-      },
-      "metrics": {
-        "accuracy": [
-          {"id": "metric_1", "value": 0.92}
-        ]
-      }
-    }
-  ],
-  "metric_summary": {
-    "accuracy": {
-      "min": 0.91,
-      "max": 0.92,
-      "mean": 0.915,
-      "std": 0.007,
-      "values": [0.92, 0.91]
-    }
-  }
-}
-```
-
-### Summarize a project
-
-Request:
-
-```bash
-curl 'http://localhost:8000/api/runs/summarize?project_id=proj_123&status=completed&metric_keys=accuracy'
-```
-
-Response:
-
-```json
-{
-  "total_runs": 8,
-  "by_status": {
-    "completed": 6,
-    "failed": 2
-  },
-  "by_tag": {
-    "candidate-a": 4,
-    "candidate-b": 4
-  },
-  "metric_stats": {
-    "accuracy": {
-      "min": 0.88,
-      "max": 0.93,
-      "mean": 0.91,
-      "std": 0.02,
-      "last": 0.92
-    }
-  }
-}
-```
-
-## Development
-
-### Linting
-
-```bash
-uv run ruff check .
-```
-
-### Tests
-
-```bash
-uv run pytest
-```
-
-## Project layout
-
-- `fantomex/api.py` — FastAPI application setup
-- `fantomex/routers/` — HTTP routes for projects, runs, artifacts, notes, comparisons, and UI
-- `fantomex/mcp.py` — MCP server and tool definitions
-- `alembic/` — database migration environment and revisions
-- `start_dev.sh` — convenience script to run migrations and launch the app
-
-## Roadmap ideas
-
-If you want to expand Fantomex further, useful next steps could include:
-
-- richer dashboards and filtering
-- experiment tags and metadata search
-- run grouping and comparison views
-- better artifact browsing and previews
-- authentication and multi-user support
-- import/export tooling
-- cloud storage backends for artifacts
-
-## License
-
-No license has been specified yet.
