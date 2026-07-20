@@ -25,20 +25,25 @@ pip install fastapi uvicorn sqlalchemy alembic pydantic pydantic-settings mcp ht
 
 Fantomex reads these environment variables:
 
-- `DATABASE_URL` (default: `sqlite:///./fantomex.db`)
-- `ARTIFACT_ROOT` (default: `./artifacts`)
-- `HOST` (default: `127.0.0.1`)
-- `PORT` (default: `8000`)
-- `LOG_LEVEL` (default: `info`)
+- `DATABASE_URL` (default: `sqlite:///./fantomex.db`) - Connection string (supports SQLite, PostgreSQL, MySQL, etc.)
+- `ARTIFACT_ROOT` (default: `./artifacts`) - Directory for local file storage (if not using S3)
+- `HOST` (default: `127.0.0.1`) - Host address to bind
+- `PORT` (default: `8000`) - Port to bind
+- `LOG_LEVEL` (default: `info`) - Server log level
+- `FANTOMEX_API_KEY` (optional) - String token to enable write/delete authentication key
+- `S3_BUCKET` (optional) - Bucket name to switch file storage to S3/R2 cloud storage
+- `S3_ENDPOINT_URL` (optional) - Custom endpoint URL (required for Cloudflare R2 / MinIO)
+- `S3_ACCESS_KEY_ID` (optional) - AWS/S3 access key
+- `S3_SECRET_ACCESS_KEY` (optional) - AWS/S3 secret key
+- `S3_REGION` (optional) - S3 region (e.g. `us-east-1`)
 
 Example:
 
 ```bash
 export DATABASE_URL='sqlite:///./fantomex.db'
-export ARTIFACT_ROOT='./artifacts'
+export FANTOMEX_API_KEY='my-secret-key'
 export HOST='127.0.0.1'
 export PORT='8000'
-export LOG_LEVEL='info'
 ```
 
 ### 3) Run migrations
@@ -137,6 +142,32 @@ with FantomexClient(base_url="http://127.0.0.1:8000") as client:
     run = client.start_run(project_id=project["id"], name="run-001")
     client.log_metric(run_id=run["id"], key="accuracy", value=0.91, step=1)
     client.update_run(run_id=run["id"], status="completed")
+```
+
+### High-level W&B-Style Experiment Tracking
+
+For a seamless experiment tracking workflow, use the `client.run` context manager. It automatically manages project/run creation, logs metrics, artifacts (CSV/JSON/Plotly), catches unhandled errors, logs tracebacks to notes, and sets final statuses.
+
+```python
+import plotly.express as px
+from fantomex.client import FantomexClient
+
+with FantomexClient(base_url="http://127.0.0.1:8000") as client:
+    with client.run(
+        project_name="demo-project",
+        run_name="training-run",
+        params={"learning_rate": 0.01, "batch_size": 64},
+        tags=["trial-1"]
+    ) as run:
+        # 1. Log metrics over steps
+        run.log({"loss": 0.45, "accuracy": 0.78}, step=1)
+        
+        # 2. Log structured CSV/JSON data tables (rendered as interactive tables in UI)
+        run.log_file("predictions.csv", type="data")
+        
+        # 3. Log Plotly figures (rendered natively using Plotly.js in UI, no iframes)
+        fig = px.scatter(x=[1, 2, 3], y=[10, 15, 13], title="Interactive Curve")
+        run.log_plotly(fig, name="val_curve")
 ```
 
 ### Result piping (decorator-enabled pattern)

@@ -1,0 +1,4 @@
+input_text,predicted_label,confidence
+'Hello world','greeting',0.98
+'Buy now','spam',0.92
+'What time is it?','question',0.89

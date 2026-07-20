@@ -44,9 +44,16 @@ class FantomexClient:
         base_url: str = "http://127.0.0.1:8000",
         timeout: float = 30,
         transport: httpx.BaseTransport | None = None,
+        api_key: str | None = None,
     ):
         self.base_url = base_url.rstrip("/")
-        self.client = httpx.Client(base_url=self.base_url, timeout=timeout, transport=transport)
+        self.api_key = api_key
+        headers = {}
+        if api_key:
+            headers["X-Fantomex-Api-Key"] = api_key
+        self.client = httpx.Client(
+            base_url=self.base_url, timeout=timeout, transport=transport, headers=headers
+        )
 
     def _parse_payload(self, response: httpx.Response) -> Any:
         if response.status_code == 204 or not response.content:
@@ -62,6 +69,10 @@ class FantomexClient:
         return {"value": payload}
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
+        if self.api_key:
+            headers = kwargs.get("headers", {})
+            headers["X-Fantomex-Api-Key"] = self.api_key
+            kwargs["headers"] = headers
         try:
             response = self.client.request(method, path, **kwargs)
         except httpx.HTTPError as exc:
@@ -260,3 +271,98 @@ class FantomexClient:
 
     def __exit__(self, exc_type, exc, tb):
         self.close()
+
+    def get_or_create_project(self, name: str) -> dict:
+        projects = self.list_projects()
+        for p in projects:
+            if p["name"] == name:
+                return p
+        return self.create_project(name=name)
+
+    import contextlib
+    @contextlib.contextmanager
+    def run(
+        self,
+        project_name: str,
+        run_name: str | None = None,
+        params: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        meta: dict[str, Any] | None = None,
+    ):
+        project = self.get_or_create_project(project_name)
+        run_data = self.start_run(
+            project_id=project["id"],
+            name=run_name,
+            params=params,
+            tags=tags,
+            meta=meta,
+        )
+        active_run = ActiveRun(self, project["id"], run_data["id"], run_data)
+        try:
+            yield active_run
+            self.update_run(run_data["id"], status="completed")
+        except Exception as exc:
+            self.update_run(run_data["id"], status="failed")
+            import traceback
+            tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            self.add_note(run_data["id"], f"Run failed with error:\n{tb}")
+            raise exc
+
+
+class ActiveRun:
+    def __init__(self, client: FantomexClient, project_id: str, run_id: str, run_data: dict):
+        self.client = client
+        self.project_id = project_id
+        self.run_id = run_id
+        self.run_data = run_data
+
+    def log(self, metrics: dict[str, float], step: int | None = None) -> list[dict]:
+        payload = []
+        for k, v in metrics.items():
+            item = {"key": k, "value": float(v)}
+            if step is not None:
+                item["step"] = step
+            payload.append(item)
+        return self.client.log_metrics(self.run_id, payload)
+
+    def log_file(self, path: str, type: str = "file") -> dict:
+        return self.client.upload_artifact(self.run_id, path, type=type)
+
+    def log_plotly(self, fig, name: str) -> dict:
+        import os
+        import tempfile
+        import json
+
+        if not name.endswith(".plotly.json"):
+            name = name.split(".")[0] + ".plotly.json"
+
+        fig_json = None
+        if hasattr(fig, "to_json"):
+            fig_json = fig.to_json()
+        elif isinstance(fig, dict):
+            fig_json = json.dumps(fig)
+        else:
+            try:
+                import plotly.io as pio
+                fig_json = pio.to_json(fig)
+            except (ImportError, ModuleNotFoundError) as exc:
+                raise ImportError(
+                    "Plotly is not installed. To log plotly figures, install plotly or pass a dictionary/object with a 'to_json' method."
+                ) from exc
+
+        temp_dir = tempfile.mkdtemp()
+        dest_path = os.path.join(temp_dir, name)
+        with open(dest_path, "w", encoding="utf-8") as f:
+            f.write(fig_json)
+
+        try:
+            result = self.client.upload_artifact(self.run_id, dest_path, type="plotly")
+        finally:
+            try:
+                os.remove(dest_path)
+                os.rmdir(temp_dir)
+            except Exception:
+                pass
+        return result
+
+

@@ -1,0 +1,142 @@
+[
+  {
+    "side": "BID",
+    "price": 61249.5,
+    "size": 1.6207
+  },
+  {
+    "side": "BID",
+    "price": 61249.0,
+    "size": 2.8546
+  },
+  {
+    "side": "BID",
+    "price": 61248.5,
+    "size": 3.6706
+  },
+  {
+    "side": "BID",
+    "price": 61248.0,
+    "size": 4.4216
+  },
+  {
+    "side": "BID",
+    "price": 61247.5,
+    "size": 5.5205
+  },
+  {
+    "side": "BID",
+    "price": 61247.0,
+    "size": 7.0603
+  },
+  {
+    "side": "BID",
+    "price": 61246.5,
+    "size": 8.7285
+  },
+  {
+    "side": "BID",
+    "price": 61246.0,
+    "size": 10.0947
+  },
+  {
+    "side": "BID",
+    "price": 61245.5,
+    "size": 11.0061
+  },
+  {
+    "side": "BID",
+    "price": 61245.0,
+    "size": 11.728
+  },
+  {
+    "side": "BID",
+    "price": 61244.5,
+    "size": 12.7
+  },
+  {
+    "side": "BID",
+    "price": 61244.0,
+    "size": 14.1317
+  },
+  {
+    "side": "BID",
+    "price": 61243.5,
+    "size": 15.8101
+  },
+  {
+    "side": "BID",
+    "price": 61243.0,
+    "size": 17.2953
+  },
+  {
+    "side": "ASK",
+    "price": 61250.5,
+    "size": 1.1161
+  },
+  {
+    "side": "ASK",
+    "price": 61251.0,
+    "size": 1.6335
+  },
+  {
+    "side": "ASK",
+    "price": 61251.5,
+    "size": 2.304
+  },
+  {
+    "side": "ASK",
+    "price": 61252.0,
+    "size": 3.3385
+  },
+  {
+    "side": "ASK",
+    "price": 61252.5,
+    "size": 4.6135
+  },
+  {
+    "side": "ASK",
+    "price": 61253.0,
+    "size": 5.7841
+  },
+  {
+    "side": "ASK",
+    "price": 61253.5,
+    "size": 6.6016
+  },
+  {
+    "side": "ASK",
+    "price": 61254.0,
+    "size": 7.1418
+  },
+  {
+    "side": "ASK",
+    "price": 61254.5,
+    "size": 7.7355
+  },
+  {
+    "side": "ASK",
+    "price": 61255.0,
+    "size": 8.6644
+  },
+  {
+    "side": "ASK",
+    "price": 61255.5,
+    "size": 9.9018
+  },
+  {
+    "side": "ASK",
+    "price": 61256.0,
+    "size": 11.1375
+  },
+  {
+    "side": "ASK",
+    "price": 61256.5,
+    "size": 12.063
+  },
+  {
+    "side": "ASK",
+    "price": 61257.0,
+    "size": 12.6547
+  }
+]

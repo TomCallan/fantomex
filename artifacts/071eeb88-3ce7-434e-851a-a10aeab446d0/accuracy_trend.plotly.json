@@ -1,0 +1,1 @@
+{"data": [{"x": [1, 2, 3, 4, 5], "y": [10, 15, 13, 17, 22], "type": "scatter", "mode": "lines+markers", "marker": {"color": "rgb(37, 99, 235)"}}], "layout": {"title": "Accuracy Trend Over Time", "xaxis": {"title": "Epoch"}, "yaxis": {"title": "Accuracy"}}}

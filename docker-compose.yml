@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  fantomex:
+    build: .
+    container_name: fantomex
+    ports:
+      - "8000:8000"
+    volumes:
+      - fantomex-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/fantomex.db
+      - ARTIFACT_ROOT=/app/data/artifacts
+      - LOG_LEVEL=info
+    restart: unless-stopped
+
+volumes:
+  fantomex-data:
+    driver: local

@@ -4,11 +4,12 @@ from sqlalchemy.orm import Session
 from fantomex.db import get_db
 from fantomex.models import Project
 from fantomex.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
+from fantomex.config import verify_api_key
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 
-@router.post("", response_model=ProjectResponse, status_code=201)
+@router.post("", response_model=ProjectResponse, status_code=201, dependencies=[Depends(verify_api_key)])
 def create_project(data: ProjectCreate, db: Session = Depends(get_db)):
     if db.query(Project).filter(Project.name == data.name).first():
         raise HTTPException(status_code=409, detail=f"Project '{data.name}' already exists")
@@ -32,7 +33,7 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
     return project
 
 
-@router.patch("/{project_id}", response_model=ProjectResponse)
+@router.patch("/{project_id}", response_model=ProjectResponse, dependencies=[Depends(verify_api_key)])
 def update_project(project_id: str, data: ProjectUpdate, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -44,7 +45,7 @@ def update_project(project_id: str, data: ProjectUpdate, db: Session = Depends(g
     return project
 
 
-@router.delete("/{project_id}", status_code=204)
+@router.delete("/{project_id}", status_code=204, dependencies=[Depends(verify_api_key)])
 def delete_project(project_id: str, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -52,3 +53,4 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
     db.delete(project)
     db.commit()
     return None
+

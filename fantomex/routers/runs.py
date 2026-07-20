@@ -14,6 +14,8 @@ from fantomex.schemas import (
     RunUpdate,
 )
 
+from fantomex.config import verify_api_key
+
 router = APIRouter(prefix="/api", tags=["runs"])
 
 
@@ -21,7 +23,7 @@ def _run_not_found():
     raise HTTPException(status_code=404, detail="Run not found")
 
 
-@router.post("/projects/{project_id}/runs", response_model=RunResponse, status_code=201)
+@router.post("/projects/{project_id}/runs", response_model=RunResponse, status_code=201, dependencies=[Depends(verify_api_key)])
 def start_run(project_id: str, data: RunCreate, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -58,7 +60,7 @@ def get_run(run_id: str, db: Session = Depends(get_db)):
     return run
 
 
-@router.patch("/runs/{run_id}", response_model=RunResponse)
+@router.patch("/runs/{run_id}", response_model=RunResponse, dependencies=[Depends(verify_api_key)])
 def update_run(run_id: str, data: RunUpdate, db: Session = Depends(get_db)):
     run = db.query(Run).filter(Run.id == run_id).first()
     if not run:
@@ -73,7 +75,7 @@ def update_run(run_id: str, data: RunUpdate, db: Session = Depends(get_db)):
     return run
 
 
-@router.delete("/runs/{run_id}", status_code=204)
+@router.delete("/runs/{run_id}", status_code=204, dependencies=[Depends(verify_api_key)])
 def delete_run(run_id: str, db: Session = Depends(get_db)):
     run = db.query(Run).filter(Run.id == run_id).first()
     if not run:
@@ -83,7 +85,7 @@ def delete_run(run_id: str, db: Session = Depends(get_db)):
     return None
 
 
-@router.post("/runs/{run_id}/metrics", response_model=list[MetricResponse], status_code=201)
+@router.post("/runs/{run_id}/metrics", response_model=list[MetricResponse], status_code=201, dependencies=[Depends(verify_api_key)])
 def log_metrics(run_id: str, data: MetricBatchCreate, db: Session = Depends(get_db)):
     run = db.query(Run).filter(Run.id == run_id).first()
     if not run:

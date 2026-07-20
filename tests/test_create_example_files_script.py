@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def _load_script_module():
-    script_path = Path("/home/runner/work/fantomex/fantomex/scripts/create_example_files.py")
+    script_path = Path(__file__).parents[1] / "scripts" / "create_example_files.py"
     spec = spec_from_file_location("create_example_files", script_path)
     assert spec and spec.loader
     module = module_from_spec(spec)
@@ -26,7 +26,7 @@ def test_create_example_files_is_idempotent(tmp_path):
 
 
 def test_cli_writes_files(tmp_path):
-    script_path = Path("/home/runner/work/fantomex/fantomex/scripts/create_example_files.py")
+    script_path = Path(__file__).parents[1] / "scripts" / "create_example_files.py"
 
     result = subprocess.run(
         [sys.executable, str(script_path), "--output-dir", str(tmp_path)],
@@ -34,6 +34,7 @@ def test_cli_writes_files(tmp_path):
         capture_output=True,
         text=True,
     )
+
 
     assert "Wrote 5 files" in result.stdout
     assert (tmp_path / "runs.jsonl").exists()

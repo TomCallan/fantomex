@@ -5,10 +5,12 @@ from fantomex.db import get_db
 from fantomex.models import Note, Run
 from fantomex.schemas import NoteCreate, NoteResponse
 
+from fantomex.config import verify_api_key
+
 router = APIRouter(prefix="/api/runs", tags=["notes"])
 
 
-@router.post("/{run_id}/notes", response_model=NoteResponse, status_code=201)
+@router.post("/{run_id}/notes", response_model=NoteResponse, status_code=201, dependencies=[Depends(verify_api_key)])
 def create_note(run_id: str, data: NoteCreate, db: Session = Depends(get_db)):
     run = db.query(Run).filter(Run.id == run_id).first()
     if not run:

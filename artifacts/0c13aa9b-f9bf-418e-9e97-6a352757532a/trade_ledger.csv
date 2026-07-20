@@ -1,0 +1,6 @@
+step,action,price,amount,cumulative_pnl
+Step-38,BUY,60390.77,0.1656,0.00
+Step-50,SELL,59492.65,0.0000,-148.72
+Step-68,BUY,60146.34,0.1638,0.00
+Step-84,SELL,59417.54,0.0000,-268.09
+Step-98,BUY,60406.74,0.1611,0.00

@@ -3,9 +3,10 @@
 {% block title %}{{ run.name or run.id[:8] }} - Fantomex{% endblock %}
 
 {% block content %}
+<script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
 <h2>
     <a href="/">Projects</a> /
-    <a href="/projects/{{ run.project_id }}/runs">{{ run.project.name }}</a> /
+    <a href="/p/{{ run.project.name }}">{{ run.project.name }}</a> /
     {{ run.name or run.id[:8] }}
 </h2>
 
@@ -54,6 +55,55 @@
     {% endif %}
 </section>
 
+{% if time_series %}
+<section class="card">
+    <h3>Custom Plots</h3>
+    
+    <!-- Render custom plots defined in run metadata -->
+    <div id="meta-custom-plots-container"></div>
+    
+    <div style="margin-top: 20px; border: 1px dashed var(--border); padding: 12px; border-radius: 6px; background: #fafafa;">
+        <h4 style="margin-top: 0; margin-bottom: 8px;">📊 Metric Plot Builder</h4>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; font-size: 13px;">
+            <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 2px;">X-Axis Metric</label>
+                <select id="plot-builder-x" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: #fff;">
+                    <option value="step">step</option>
+                    {% for key in time_series.keys() %}
+                    <option value="{{ key }}">{{ key }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 2px;">Chart Type</label>
+                <select id="plot-builder-type" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: #fff;">
+                    <option value="line">Line Chart</option>
+                    <option value="scatter">Scatter Plot</option>
+                    <option value="bar">Bar Chart</option>
+                    <option value="area">Area Chart</option>
+                </select>
+            </div>
+            <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 2px;">Y-Axis Metrics (select multiple)</label>
+                <div style="max-height: 100px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; background: #fff; width: 220px;" id="plot-builder-y-list">
+                    {% for key in time_series.keys() %}
+                    <label style="display: block; margin-bottom: 2px;">
+                        <input type="checkbox" value="{{ key }}"> {{ key }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div>
+                <button type="button" id="btn-build-chart" style="padding: 6px 12px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer;">Add Plot</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Container for dynamic built plots -->
+    <div id="dynamic-plots-container" style="margin-top: 16px;"></div>
+</section>
+{% endif %}
+
 {% for key, metrics in time_series.items() %}
 <section class="card">
     <h3>{{ key }}</h3>
@@ -63,15 +113,56 @@
 </section>
 {% endfor %}
 
+<style>
+    .preview-data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: monospace;
+        font-size: 12px;
+        margin-top: 8px;
+    }
+    .preview-data-table th, .preview-data-table td {
+        border: 1px solid var(--border);
+        padding: 6px 8px;
+        text-align: left;
+    }
+    .preview-data-table th {
+        background: #f9fafb;
+        font-weight: bold;
+    }
+    .data-preview {
+        margin-top: 12px;
+        margin-bottom: 24px;
+    }
+</style>
+
 <section class="card">
     <h3>Artifacts</h3>
     {% if artifacts %}
     <ul>
         {% for a in artifacts %}
-        <li>
-            <span class="badge">{{ a.type }}</span>
-            <a href="/api/runs/{{ run.id }}/artifacts">{{ a.name }}</a>
-            {% if a.size_bytes %}({{ a.size_bytes }} bytes){% endif %}
+        <li style="margin-bottom: 20px; list-style: none;">
+            <div style="margin-bottom: 6px;">
+                <span class="badge">{{ a.type }}</span>
+                <a href="/api/runs/{{ run.id }}/artifacts/download/{{ a.name }}" target="_blank" style="font-weight: 600;">{{ a.name }}</a>
+                {% if a.size_bytes %}<span style="color: var(--muted); font-size: 12px;">({{ a.size_bytes }} bytes)</span>{% endif %}
+            </div>
+
+            {% if a.name.lower().endswith('.plotly.json') or a.type == 'plotly' %}
+            <div class="plotly-chart" data-url="/api/runs/{{ run.id }}/artifacts/download/{{ a.name }}" style="width: 100%; min-height: 400px; border: 1px solid var(--border); margin: 8px 0; border-radius: 4px; padding: 10px; background: #fff;">
+                <span class="loading" style="color: var(--muted); font-style: italic;">Loading interactive plot...</span>
+            </div>
+            {% elif a.name.lower().endswith('.csv') or a.name.lower().endswith('.json') %}
+            <div class="data-preview" data-url="/api/runs/{{ run.id }}/artifacts/download/{{ a.name }}" data-filename="{{ a.name }}">
+                <div class="preview-table-container" style="overflow-x: auto; max-height: 400px; border: 1px solid var(--border); border-radius: 4px; padding: 4px; background: #fff;">
+                    <span class="loading" style="color: var(--muted); font-style: italic;">Loading interactive data preview...</span>
+                </div>
+            </div>
+            {% elif a.name.lower().endswith('.png') or a.name.lower().endswith('.jpg') or a.name.lower().endswith('.jpeg') or a.name.lower().endswith('.gif') or a.name.lower().endswith('.webp') or a.type == 'image' %}
+            <div style="margin-top: 8px;">
+                <img src="/api/runs/{{ run.id }}/artifacts/download/{{ a.name }}" style="max-width: 100%; max-height: 500px; display: block; border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+            {% endif %}
         </li>
         {% endfor %}
     </ul>
@@ -95,6 +186,11 @@
 </section>
 
 <script>
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 {% for key, metrics in time_series.items() %}
 const ctx{{ loop.index }} = document.getElementById('chart-{{ loop.index }}').getContext('2d');
 new Chart(ctx{{ loop.index }}, {
@@ -124,5 +220,284 @@ new Chart(ctx{{ loop.index }}, {
     }
 });
 {% endfor %}
+
+// Data Preview & Plotly Loader
+const allTimeSeries = {
+    {% for key, metrics in time_series.items() %}
+    "{{ key }}": [
+        {% for m in metrics %}
+        { "step": {{ m.step if m.step is not none else 'null' }}, "value": {{ m.value }} },
+        {% endfor %}
+    ],
+    {% endfor %}
+};
+
+let customChartCount = 0;
+
+function drawCustomChart(containerId, title, xKey, yKeys, chartType = 'line') {
+    const container = document.getElementById(containerId);
+    container.innerHTML = `
+        <div class="chart-wrapper" style="border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 16px; background:#fff;">
+            <h4 style="margin-top:0; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span>${escapeHtml(title)}</span>
+                <button style="padding: 2px 6px; font-size:11px; color:#ff4d4f; border: 1px solid #ff4d4f; background:none; border-radius:3px; cursor:pointer;" onclick="this.closest('.chart-wrapper').remove()">Delete</button>
+            </h4>
+            <div style="height:300px; position:relative;">
+                <canvas id="custom-canvas-${containerId}"></canvas>
+            </div>
+        </div>
+    `;
+
+    const datasets = [];
+    const colors = ["#2563eb", "#10b981", "#ef4444", "#f59e0b", "#8b5cf6", "#ec4899"];
+    
+    let stepsSet = new Set();
+    yKeys.forEach(k => {
+        if (allTimeSeries[k]) {
+            allTimeSeries[k].forEach(pt => {
+                if (pt.step !== null) stepsSet.add(pt.step);
+            });
+        }
+    });
+    if (xKey !== 'step' && allTimeSeries[xKey]) {
+        allTimeSeries[xKey].forEach(pt => {
+            if (pt.step !== null) stepsSet.add(pt.step);
+        });
+    }
+    
+    const stepsSorted = Array.from(stepsSet).sort((a, b) => a - b);
+    
+    yKeys.forEach((yKey, index) => {
+        if (!allTimeSeries[yKey]) return;
+        
+        const dataPoints = [];
+        stepsSorted.forEach(step => {
+            const yPt = allTimeSeries[yKey].find(pt => pt.step === step);
+            if (!yPt) return;
+            
+            if (xKey === 'step') {
+                dataPoints.push({ x: step, y: yPt.value });
+            } else {
+                const xPt = allTimeSeries[xKey] ? allTimeSeries[xKey].find(pt => pt.step === step) : null;
+                if (xPt) {
+                    dataPoints.push({ x: xPt.value, y: yPt.value });
+                }
+            }
+        });
+
+        dataPoints.sort((a, b) => a.x - b.x);
+
+        const color = colors[index % colors.length];
+        const isBar = chartType === 'bar';
+        const isArea = chartType === 'area';
+        const isScatter = chartType === 'scatter';
+
+        datasets.push({
+            label: yKey,
+            data: dataPoints,
+            borderColor: color,
+            backgroundColor: (isArea || isBar) ? hexToRgba(color, 0.2) : 'rgba(0,0,0,0)',
+            fill: isArea ? 'origin' : false,
+            tension: 0.1,
+            pointRadius: isBar ? 0 : 4,
+            showLine: !isScatter
+        });
+    });
+
+    function hexToRgba(hex, alpha) {
+        let c;
+        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+            c= hex.substring(1).split('');
+            if(c.length== 3){
+                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c= '0x' + c.join('');
+            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+        }
+        return 'rgba(37,99,235,' + alpha + ')';
+    }
+
+    const ctx = document.getElementById(`custom-canvas-${containerId}`).getContext('2d');
+    const canvasType = chartType === 'bar' ? 'bar' : 'scatter';
+
+    new Chart(ctx, {
+        type: canvasType,
+        data: {
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            showLine: chartType !== 'scatter',
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom',
+                    title: { display: true, text: xKey }
+                },
+                y: {
+                    title: { display: true, text: yKeys.join(', ') }
+                }
+            }
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Render custom plots defined in run metadata
+    const runMeta = {{ (run.meta or {}) | tojson | safe }};
+    if (runMeta.custom_plots && Array.isArray(runMeta.custom_plots)) {
+        runMeta.custom_plots.forEach(plot => {
+            const containerId = `meta-plot-${customChartCount++}`;
+            const div = document.createElement("div");
+            div.id = containerId;
+            document.getElementById("meta-custom-plots-container").appendChild(div);
+            drawCustomChart(containerId, plot.title || "Custom Plot", plot.x || "step", plot.y || [], plot.type || 'line');
+        });
+    }
+
+    // Bind custom plot builder button
+    const btnBuild = document.getElementById("btn-build-chart");
+    if (btnBuild) {
+        btnBuild.addEventListener("click", () => {
+            const xKey = document.getElementById("plot-builder-x").value;
+            const chartType = document.getElementById("plot-builder-type").value;
+            const selectedY = [];
+            document.querySelectorAll("#plot-builder-y-list input:checked").forEach(cb => {
+                selectedY.push(cb.value);
+            });
+            
+            if (selectedY.length === 0) {
+                alert("Please select at least one Y metric.");
+                return;
+            }
+            
+            const title = `Plot (${chartType}): ${selectedY.join(', ')} vs ${xKey}`;
+            const containerId = `dynamic-plot-${customChartCount++}`;
+            const div = document.createElement("div");
+            div.id = containerId;
+            document.getElementById("dynamic-plots-container").appendChild(div);
+            
+            drawCustomChart(containerId, title, xKey, selectedY, chartType);
+        });
+    }
+
+    // Plotly Chart Loader
+    document.querySelectorAll(".plotly-chart").forEach(container => {
+        const url = container.dataset.url;
+        fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error("Could not fetch plot data");
+                return res.json();
+            })
+            .then(spec => {
+                container.innerHTML = "";
+                Plotly.newPlot(container, spec.data, spec.layout || {}, { responsive: true });
+            })
+            .catch(err => {
+                container.innerHTML = `<span style="color:var(--danger)">Failed to load interactive chart: ${escapeHtml(err.message)}</span>`;
+            });
+    });
+
+    document.querySelectorAll(".data-preview").forEach(container => {
+        const url = container.dataset.url;
+        const filename = container.dataset.filename;
+        const target = container.querySelector(".preview-table-container");
+        
+        fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error("Could not fetch file content");
+                return res.text();
+            })
+            .then(text => {
+                if (filename.toLowerCase().endsWith(".json")) {
+                    try {
+                        const data = JSON.parse(text);
+                        if (Array.isArray(data)) {
+                            target.innerHTML = renderTable(data);
+                        } else {
+                            target.innerHTML = `<pre style="margin:0; padding:10px; font-size:12px; font-family:monospace;"><code>${escapeHtml(JSON.stringify(data, null, 2))}</code></pre>`;
+                        }
+                    } catch (e) {
+                        target.innerHTML = `<span style="color:var(--danger)">Error parsing JSON: ${escapeHtml(e.message)}</span>`;
+                    }
+                } else if (filename.toLowerCase().endsWith(".csv")) {
+                    target.innerHTML = renderCsv(text);
+                } else {
+                    target.innerHTML = `<pre style="margin:0; padding:10px; font-size:12px; font-family:monospace;"><code>${escapeHtml(text)}</code></pre>`;
+                }
+            })
+            .catch(err => {
+                target.innerHTML = `<span style="color:var(--danger)">Failed to load preview: ${escapeHtml(err.message)}</span>`;
+            });
+    });
+
+    function renderTable(data) {
+        if (data.length === 0) return '<p class="empty" style="margin:10px;">Empty data array.</p>';
+        const keys = Object.keys(data[0]);
+        let html = '<table class="preview-data-table"><thead><tr>';
+        keys.forEach(k => {
+            html += `<th>${escapeHtml(k)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        data.forEach(row => {
+            html += '<tr>';
+            keys.forEach(k => {
+                const val = row[k] === null || row[k] === undefined ? "" : row[k];
+                html += `<td>${escapeHtml(String(val))}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function renderCsv(csvText) {
+        const lines = csvText.trim().split("\n");
+        if (lines.length === 0 || (lines.length === 1 && lines[0] === "")) {
+            return '<p class="empty" style="margin:10px;">Empty CSV.</p>';
+        }
+        
+        let html = '<table class="preview-data-table"><thead><tr>';
+        const headers = parseCsvLine(lines[0]);
+        headers.forEach(h => {
+            html += `<th>${escapeHtml(h)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim() === "") continue;
+            const cols = parseCsvLine(lines[i]);
+            html += '<tr>';
+            for (let j = 0; j < headers.length; j++) {
+                const val = cols[j] === undefined ? "" : cols[j];
+                html += `<td>${escapeHtml(val)}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function parseCsvLine(line) {
+        const result = [];
+        let cur = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(cur.trim());
+                cur = "";
+            } else {
+                cur += char;
+            }
+        }
+        result.push(cur.trim());
+        return result;
+    }
+});
 </script>
+
 {% endblock %}

@@ -6,7 +6,7 @@
 <h2><a href="/">Projects</a> / {{ project.name }}</h2>
 
 <section class="toolbar">
-    <form method="get" action="/projects/{{ project.id }}/runs">
+    <form method="get" action="/p/{{ project.name }}">
         <select name="status">
             <option value="">All statuses</option>
             <option value="running" {% if status == 'running' %}selected{% endif %}>Running</option>
@@ -46,7 +46,7 @@
         <tbody>
             {% for run in runs %}
             <tr>
-                <td><a href="/runs/{{ run.id }}">{{ run.name or run.id[:8] }}</a></td>
+                <td><a href="/p/{{ project.name }}/r/{{ run.name or run.id }}">{{ run.name or run.id[:8] }}</a></td>
                 <td><span class="status {{ run.status }}"></span>{{ run.status }}</td>
                 <td>
                     {% for k, v in (run.params or {}).items() %}
